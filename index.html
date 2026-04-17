@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRM Dashboard Analítico</title>
+  
+  <!-- Letras Llamativas: Outfit para títulos, Inter para textos -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js y PapaParse -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* === Paleta de Colores Solicitada (Fondo claro, Azules, Verdes, Lilas) === */
+    :root {
+      --bg-light: #f8fafb;
+      --card-bg: #ffffff;
+      --blue-primary: #3b82f6;
+      --blue-dark: #1e3a8a;
+      --green-light: #22c55e;
+      --green-neon: #10b981;
+      --lilac: #a855f7;
+      --lilac-light: #d8b4fe;
+      --text-main: #334155;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --shadow-sm: 0 4px 6px -1px rgba(0,0,0,0.05);
+      --shadow-md: 0 10px 15px -3px rgba(0,0,0,0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* === Header === */
+    header {
+      background: var(--card-bg);
+      padding: 1.5rem 2rem;
+      border-bottom: 2px solid var(--lilac-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--blue-primary), var(--lilac));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .uploader-area {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .upload-btn {
+      background: linear-gradient(135deg, var(--blue-primary), var(--blue-dark));
+      color: white;
+      padding: 0.6rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.3s;
+      font-family: 'Outfit', sans-serif;
+      box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+    }
+    .upload-btn:hover { opacity: 0.9; }
+    input[type="file"] { display: none; }
+
+    /* === Main Content 2-Column Layout === */
+    main {
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 1024px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    /* === Left: Dashboard Charts === */
+    .dashboard-graphics {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-md);
+      border-top: 4px solid var(--blue-primary);
+      transition: transform 0.3s;
+    }
+    .card:hover { transform: translateY(-3px); }
+
+    .card-lilac { border-top-color: var(--lilac); }
+    .card-green { border-top-color: var(--green-neon); }
+
+    .card h2 {
+      font-size: 1.4rem;
+      color: var(--blue-dark);
+      margin-bottom: 0.5rem;
+    }
+    
+    .card p.subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .chart-box {
+      position: relative;
+      width: 100%;
+      height: 350px;
+    }
+
+    /* === Right: KPIs Panel === */
+    .kpi-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 6px;
+    }
+
+    .kpi-blue::before { background: var(--blue-primary); }
+    .kpi-green::before { background: var(--green-neon); }
+    .kpi-lilac::before { background: var(--lilac); }
+
+    .kpi-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .kpi-value {
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--blue-dark);
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .kpi-sublist {
+      margin-top: 1rem;
+      text-align: left;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+    }
+    .kpi-sublist-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    /* === Status Banner === */
+    #status-banner {
+      background: var(--lilac-light);
+      color: var(--blue-dark);
+      padding: 1rem 2rem;
+      text-align: center;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border-color);
+      display: none;
+    }
+
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>CRM Inteligencia Médica</h1>
+    <div class="uploader-area">
+      <label for="dataFile" class="upload-btn">📁 Subir Archivo TXT/CSV</label>
+      <input type="file" id="dataFile" accept=".txt,.csv">
+    </div>
+  </header>
+
+  <div id="status-banner">Cargando y procesando datos...</div>
+
+  <main id="main-content" style="opacity: 0.2; pointer-events: none; transition: opacity 0.5s;">
+    
+    <!-- LEFT: Gráficos -->
+    <section class="dashboard-graphics">
+      
+      <!-- Chart 1: Participación por Especialidad (Bar) -->
+      <div class="card">
+        <h2>Participación por Especialidad</h2>
+        <p class="subtitle">Volumen total de mercado según el servicio prestado.</p>
+        <div class="chart-box">
+          <canvas id="chartEspecialidad"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: Propuesta de Visita Médica (Line) -->
+      <div class="card card-lilac">
+        <h2>Propuesta de Visitas Médicas</h2>
+        <p class="subtitle">Sugerencia de frecuencia de visita según el volumen de participación de la especialidad en el mercado.</p>
+        <div class="chart-box">
+          <canvas id="chartVisitas"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: Distribución Geográfica (Pie/Doughnut) -->
+      <div class="card card-green">
+        <h2>Ubicación Geográfica</h2>
+        <p class="subtitle">Distribución del mercado en la ciudad (Norte vs Sur).</p>
+        <div class="chart-box" style="height: 300px;">
+          <canvas id="chartGeografia"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT: KPIs Panel -->
+    <aside class="kpi-panel">
+      
+      <div class="kpi-card kpi-blue">
+        <h3 class="kpi-title">Total Prospectos</h3>
+        <div class="kpi-value" id="kpi-total">0</div>
+      </div>
+
+      <div class="kpi-card kpi-green">
+        <h3 class="kpi-title">Mercado por Zona</h3>
+        <div class="kpi-sublist" id="kpi-zonas-lista">
+          <div class="kpi-sublist-item"><span>Norte:</span> <span id="kpi-norte">0</span></div>
+          <div class="kpi-sublist-item"><span>Sur:</span> <span id="kpi-sur">0</span></div>
+          <div class="kpi-sublist-item"><span>Otras Zonas:</span> <span id="kpi-otro">0</span></div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-lilac">
+        <h3 class="kpi-title">Top 3 Especialidades</h3>
+        <div class="kpi-sublist" id="kpi-top-especialidades">
+          <!-- Dinámico -->
+        </div>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <script>
+    // === Referencias a elementos UI ===
+    const fileInput = document.getElementById('dataFile');
+    const statusBanner = document.getElementById('status-banner');
+    const mainContent = document.getElementById('main-content');
+
+    // === Instancias de ChartJS ===
+    let chart1, chart2, chart3;
+
+    // === Listeners ===
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      statusBanner.style.display = 'block';
+      statusBanner.textContent = 'Analizando ' + file.name + '...';
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const text = event.target.result;
+
+        // Parse usando PapaParse
+        Papa.parse(text, {
+          delimiter: "\t", 
+          header: true,
+          skipEmptyLines: true,
+          complete: function(results) {
+            // Check if tab delimiter failed, if so try automatic 
+            if(results.data.length > 0 && Object.keys(results.data[0]).length <= 1) {
+              Papa.parse(text, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(res) { processData(res.data); }
+              });
+            } else {
+              processData(results.data);
+            }
+          },
+          error: function(err) {
+            statusBanner.textContent = 'Error procesando el archivo.';
+          }
+        });
+      };
+      
+      // Manejar la codificación típica de exportes de Excel Windows txt
+      reader.readAsText(file, "UTF-16LE");
+    });
+
+    // === Lógica Analítica Central ===
+    function processData(data) {
+      if (!data || data.length === 0) return;
+
+      let totalProspectos = 0;
+      const especialidades = {};
+      const zonas = { "Norte": 0, "Sur": 0, "Otro": 0 };
+      
+      const getVal = (row, ...possibles) => {
+        const keys = Object.keys(row);
+        for(let p of possibles) {
+          const key = keys.find(k => k.toLowerCase().trim() === p.toLowerCase());
+          if (key) return row[key];
+        }
+        return null;
+      }
+
+      data.forEach(row => {
+        const servicio = getVal(row, 'servicio', 'especialidad');
+        const direccion = getVal(row, 'direccion', 'dirección');
+        
+        // Obviar filas vacías
+        if (!servicio && !direccion) return; 
+        
+        totalProspectos++;
+
+        // 1. Agrupar Especialidades
+        if (servicio) {
+          const servClean = servicio.trim().toUpperCase();
+          especialidades[servClean] = (especialidades[servClean] || 0) + 1;
+        }
+
+        // 2. Clasificar Geografía (Sur / Norte)
+        if (direccion) {
+          const dirUpper = direccion.toUpperCase();
+          // Regex simple: " NORTE", " N ", "-N ", " CN ", "AV 6N"
+          if (/\b(NORTE|N|CN)\b|N\d+|N[a-zA-Z]/.test(dirUpper)) {
+            zonas["Norte"]++;
+          } 
+          // Regex simple: " SUR", " S ", "-S "
+          else if (/\b(SUR|S)\b|S\d+/.test(dirUpper)) {
+            zonas["Sur"]++;
+          } 
+          else {
+            zonas["Otro"]++;
+          }
+        } else {
+          zonas["Otro"]++;
+        }
+      });
+
+      // Ordenar Especialidades
+      const topEspecs = Object.entries(especialidades).sort((a,b) => b[1] - a[1]);
+      
+      // Actualizar UI
+      updateKPIs(totalProspectos, zonas, topEspecs);
+      renderCharts(topEspecs, zonas);
+
+      // Liberar visualización
+      statusBanner.style.backgroundColor = 'var(--green-light)';
+      statusBanner.style.color = '#fff';
+      statusBanner.textContent = '¡Análisis Completado!';
+      mainContent.style.opacity = '1';
+      mainContent.style.pointerEvents = 'auto';
+
+      setTimeout(() => { statusBanner.style.display = 'none'; }, 3000);
+    }
+
+    // === Visualización KPI ===
+    function updateKPIs(total, zonas, topEspecs) {
+      document.getElementById('kpi-total').textContent = total;
+      document.getElementById('kpi-norte').textContent = zonas["Norte"];
+      document.getElementById('kpi-sur').textContent = zonas["Sur"];
+      document.getElementById('kpi-otro').textContent = zonas["Otro"];
+
+      const topLista = document.getElementById('kpi-top-especialidades');
+      topLista.innerHTML = ''; // Clear
+
+      for(let i=0; i<3 && i<topEspecs.length; i++) {
+        let label = topEspecs[i][0];
+        // Truncate long names slightly
+        if(label.length > 25) label = label.substring(0, 22) + '...';
+        
+        topLista.innerHTML += `
+          <div class="kpi-sublist-item">
+            <span style="color:var(--blue-dark); font-weight:700;">${label}</span>
+            <span style="background:var(--lilac-light); padding:2px 8px; border-radius:12px; font-size:0.8rem;">${topEspecs[i][1]}</span>
+          </div>`;
+      }
+    }
+
+    // === Visualización Gráficos ===
+    function renderCharts(topEspecs, zonas) {
+      // Configuraciones globales de ChartJS
+      Chart.defaults.font.family = "'Inter', sans-serif";
+      Chart.defaults.color = "#64748b";
+
+      // Preparar datos (Tomar los top 15 para visualizar claro en la gráfica)
+      const graphData = topEspecs.slice(0, 15);
+      const srvLabels = graphData.map(e => e[0]);
+      const srvVals = graphData.map(e => e[1]);
+
+      // --- Chart 1: Participación (Barras) ---
+      if(chart1) chart1.destroy();
+      const ctx1 = document.getElementById('chartEspecialidad').getContext('2d');
+      chart1 = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: srvLabels,
+          datasets: [{
+            label: 'Total Oportunidades',
+            data: srvVals,
+            backgroundColor: '#3b82f6', // blue-primary
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      // --- Chart 2: Frecuencia de Visitas Sugerida (Línea) ---
+      // Lógica: Alta participación (> X pct total) = Quincenal (Valor 2/mes)
+      // Media = Mensual (Valor 1/mes)
+      // Baja = Bimensual (Valor 0.5/mes)
+      const totalMercado = srvVals.reduce((a,b)=>a+b, 0);
+      const frecuencias = graphData.map(e => {
+        let pct = (e[1]/totalMercado)*100;
+        if(pct > 10) return "Quincenal";
+        else if (pct > 3) return "Mensual";
+        else return "Bimestral";
+      });
+      // Convertir a un valor numérico para gráfica de líneas
+      const frecValues = frecuencias.map(f => {
+        if(f==="Quincenal") return 2;
+        if(f==="Mensual") return 1;
+        return 0.5;
+      });
+
+      if(chart2) chart2.destroy();
+      const ctx2 = document.getElementById('chartVisitas').getContext('2d');
+      chart2 = new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: srvLabels,
+          datasets: [{
+            label: 'Visitas Recomendadas al Mes',
+            data: frecValues,
+            borderColor: '#a855f7', // lilac
+            backgroundColor: 'rgba(168, 85, 247, 0.2)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#a855f7',
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                   return ' Visita: ' + frecuencias[ctx.dataIndex];
+                }
+              }
+            }
+          },
+          scales: {
+            y: { ticks: { callback: v => v===2?"Quincenal":v===1?"Mensual":v===0.5?"Bimestral":""} }
+          }
+        }
+      });
+
+      // --- Chart 3: Zonas Geográficas (Torta) ---
+      if(chart3) chart3.destroy();
+      const ctx3 = document.getElementById('chartGeografia').getContext('2d');
+      chart3 = new Chart(ctx3, {
+        type: 'doughnut',
+        data: {
+          labels: ['Norte', 'Sur', 'Otras'],
+          datasets: [{
+            data: [zonas["Norte"], zonas["Sur"], zonas["Otro"]],
+            backgroundColor: ['#3b82f6', '#10b981', '#cbd5e1'],
+            borderWidth: 0,
+            hoverOffset: 10
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+
+    }
+
+  </script>
+</body>
+</html>
